@@ -1,8 +1,13 @@
 # GitHub Repo Reviewer
 
+**Repo:** https://github.com/arnav-012/devsoc-core-induction-2026
+**Live demo (GitHub Pages):** https://arnav-012.github.io/devsoc-core-induction-2026/
+
 A client-side app that reviews any public GitHub repository with a panel of AI agents — no backend, no build step. Paste a repo URL and get a scored, multi-dimension code review you can copy or download as Markdown.
 
-**Pipeline:**
+Built for the **DevSoc AI/ML Core Induction Project (2026)**.
+
+## How it works
 
 1. **Parse** — extracts owner/repo/branch from any GitHub URL (HTTPS or SSH)
 2. **Index** — fetches repo metadata + full recursive file tree via the GitHub REST API
@@ -10,9 +15,13 @@ A client-side app that reviews any public GitHub repository with a panel of AI a
 4. **Agents** — five specialist agents (architecture, documentation, testing, code quality, dependencies) run in parallel via the OpenRouter API and return structured JSON scores/issues/suggestions
 5. **Report** — aggregates all agent output into an overall score, executive summary, and prioritized issue list, exportable as a Markdown report (copy or download)
 
-## Why this exists
+## Try it now
 
-Built for the DevSoc AI/ML Core Induction Project (2026) as a demonstration of an AI review pipeline with clear separation of concerns: pure parsing functions → deterministic preprocessing → structured-output agents → parallel execution + aggregation → export. Each phase was built and can be reasoned about independently.
+No install needed — just open the live demo and paste a GitHub repo URL:
+
+👉 **https://arnav-012.github.io/devsoc-core-induction-2026/**
+
+You'll need an [OpenRouter API key](https://openrouter.ai/keys) to run the AI agent step (Phase 3+). See [API key](#api-key) below for details on how it's handled.
 
 ## Project structure
 
@@ -44,68 +53,28 @@ The code is split to mirror the five build phases, plus a thin UI layer that wir
 ## Running it locally
 
 ```bash
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/arnav-012/devsoc-core-induction-2026.git
+cd devsoc-core-induction-2026
 python3 -m http.server 8000
 # visit http://localhost:8000
 ```
 
 (Opening `index.html` directly by double-clicking also works in most browsers, since everything is a relative `<script src>`/`<link>` — no ES modules, no CORS issues.)
 
-### API key
+## API key
 
 Phase 3 (AI agents) requires an [OpenRouter API key](https://openrouter.ai/keys). It's entered directly into the password field in the UI at runtime and is **never stored, logged, or sent anywhere except directly to OpenRouter's API from your browser**. Phases 1 and 2 (repo indexing + preprocessing) work with no key at all.
 
-## Deploying
+## Deployment
 
-Static files, so it works out of the box on GitHub Pages — see the step-by-step guide below.
+This app is deployed via **GitHub Pages**, serving directly from the `main` branch root:
 
----
+- **Settings → Pages → Source:** Deploy from a branch
+- **Branch:** `main` / `(root)`
+- **Live URL:** https://arnav-012.github.io/devsoc-core-induction-2026/
 
-## Step-by-step: pushing this to GitHub
+Since it's a static site with no build step, any push to `main` updates the live version within about a minute — no CI/CD needed.
 
-### 1. Create the repository on GitHub
+## Notes on the review output
 
-1. Go to [github.com/new](https://github.com/new).
-2. Pick a repo name (e.g. `repo-reviewer`).
-3. Leave it **Public** (so GitHub Pages can serve it for free) or Private if you don't need a live demo.
-4. **Do not** check "Add a README" — you already have one in this folder.
-5. Click **Create repository**. GitHub will show you a page with setup commands — you can ignore those and use the ones below instead.
-
-### 2. Push your local files
-
-Open a terminal in the folder containing `index.html`, `css/`, `js/`, and `README.md`, then run:
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: GitHub Repo Reviewer (Phases 1–5)"
-git branch -M main
-git remote add origin https://github.com/<your-username>/<repo-name>.git
-git push -u origin main
-```
-
-Replace `<your-username>` and `<repo-name>` with your actual GitHub username and the repo name you picked in step 1.
-
-If `git push` asks for a password and rejects it: GitHub no longer accepts account passwords over HTTPS. Either:
-- use a [Personal Access Token](https://github.com/settings/tokens) in place of the password, or
-- switch the remote to SSH (`git remote set-url origin git@github.com:<your-username>/<repo-name>.git`) if you have an SSH key set up with GitHub.
-
-### 3. Verify it landed correctly
-
-Refresh the repo page on GitHub. You should see `index.html`, `css/`, `js/`, and `README.md` at the top level. Click into `js/` to confirm all seven files are there.
-
-### 4. (Optional) Make it live with GitHub Pages
-
-1. On the repo page, go to **Settings → Pages**.
-2. Under "Build and deployment", set **Source** to `Deploy from a branch`.
-3. Set **Branch** to `main` and folder to `/ (root)`, then **Save**.
-4. Wait ~30–60 seconds, then refresh — GitHub will show a URL like:
-   `https://<your-username>.github.io/<repo-name>/`
-5. Visit that URL to confirm the app loads and the pipeline runs end to end.
-
-### 5. Submitting
-
-Whatever the submission form asks for, you'll generally want to share:
-- The repo URL: `https://github.com/<your-username>/<repo-name>`
-- The live demo URL (if you enabled Pages): `https://<your-username>.github.io/<repo-name>/`
+Because this runs entirely in the browser, agents review the **file tree and metadata only** (paths, sizes, naming conventions, config files) rather than full file contents — there's no server-side step to pull and chunk raw source. This keeps the tool fast, key-free for indexing, and deployable as a static site, at the tradeoff of not doing a deep line-by-line code read.
