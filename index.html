@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repo Reviewer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="wordmark">DevSoc AI/ML Core Induction Project · 2026</div>
+    <h1>GitHub<br><span>Repo Reviewer</span></h1>
+    <p class="subtitle">Paste any public GitHub repository URL to fetch its structure, metadata, and file tree — the foundation for AI-powered code review.</p>
+  </header>
+
+  <!-- Input -->
+  <div class="input-card">
+    <label class="input-label" for="url-input">Repository URL</label>
+    <div class="input-row">
+      <input
+        class="url-input"
+        id="url-input"
+        type="text"
+        placeholder="https://github.com/owner/repo"
+        spellcheck="false"
+        autocomplete="off"
+      />
+      <button class="btn" id="analyze-btn" onclick="handleAnalyze()">
+        <span class="btn-spinner"></span>
+        <span class="btn-label">Analyze</span>
+      </button>
+    </div>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- Pipeline progress -->
+  <div class="pipeline" id="pipeline">
+    <div class="stage" id="stage-parse">
+      <div class="stage-dot">1</div>
+      <span class="stage-label">Parse URL</span>
+    </div>
+    <div class="stage-line"></div>
+    <div class="stage" id="stage-index">
+      <div class="stage-dot">2</div>
+      <span class="stage-label">Index repo</span>
+    </div>
+    <div class="stage-line"></div>
+    <div class="stage" id="stage-preprocess">
+      <div class="stage-dot">3</div>
+      <span class="stage-label">Preprocess</span>
+    </div>
+    <div class="stage-line"></div>
+    <div class="stage" id="stage-agents">
+      <div class="stage-dot">4</div>
+      <span class="stage-label">Agents</span>
+    </div>
+    <div class="stage-line"></div>
+    <div class="stage" id="stage-report">
+      <div class="stage-dot">5</div>
+      <span class="stage-label">Report</span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <p class="section-label">Repository overview</p>
+
+    <div class="warning-banner" id="trunc-warning">
+      ⚠ GitHub truncated this repo's tree — it has more than 100,000 entries. Showing a partial file list.
+    </div>
+
+    <!-- Repo meta card -->
+    <div class="repo-card" id="repo-card">
+      <div class="repo-name">
+        <a id="repo-link" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <div class="repo-desc" id="repo-desc"></div>
+      <div class="repo-meta-grid" id="meta-grid"></div>
+      <div class="tags" id="tags-row"></div>
+    </div>
+
+    <!-- File tree card -->
+    <div class="tree-card">
+      <div class="tree-header">
+        <span class="tree-title" id="tree-title">File tree</span>
+        <span class="tree-count" id="tree-count"></span>
+      </div>
+      <div class="tree-body" id="tree-body"></div>
+    </div>
+
+    <!-- Phase 2: Preprocessor panel -->
+    <div id="preprocess-trigger" class="next-card">
+      <div class="next-text">
+        <strong>Phase 2 — Preprocessor</strong><br>
+        Filter noise, rank files by priority tier, and build per-agent context bundles.
+      </div>
+      <button class="btn" id="preprocess-btn" onclick="handlePreprocess()" style="flex-shrink:0">
+        <span class="btn-spinner"></span>
+        <span class="btn-label">Run preprocessor</span>
+      </button>
+    </div>
+
+    <div id="preprocess-results" style="display:none; margin-top:24px;">
+      <p class="section-label">Preprocessor output</p>
+
+      <div class="repo-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+          <div style="font-family:var(--mono);font-size:15px;font-weight:500;">Filter stats</div>
+          <span id="filter-badge" class="phase-badge" style="margin-left:auto"></span>
+        </div>
+        <div class="repo-meta-grid" id="filter-grid"></div>
+      </div>
+
+      <div class="repo-card">
+        <div style="font-family:var(--mono);font-size:15px;font-weight:500;margin-bottom:4px;">Per-agent context bundles</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Each agent receives files most relevant to its review dimension, within its token budget.</div>
+        <div id="agent-rows"></div>
+      </div>
+
+      <div class="tree-card">
+        <div class="tree-header">
+          <span class="tree-title">Files by priority tier</span>
+          <span class="tree-count" id="priority-count"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface2);">
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--green);font-weight:600;">T1 Critical</span>
+            <span style="color:var(--muted);">— README, manifests, Dockerfile, CI config</span>
+          </div>
+          <div style="color:var(--border2);font-size:11px;padding-top:1px;">·</div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--accent);font-weight:600;">T2 Entry/Test</span>
+            <span style="color:var(--muted);">— main, index, app, __init__, test files</span>
+          </div>
+          <div style="color:var(--border2);font-size:11px;padding-top:1px;">·</div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--text);font-weight:600;">T3 Source</span>
+            <span style="color:var(--muted);">— all other source code files</span>
+          </div>
+          <div style="color:var(--border2);font-size:11px;padding-top:1px;">·</div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--muted);font-weight:600;">T4 Other</span>
+            <span style="color:var(--muted);">— assets, configs, misc files</span>
+          </div>
+        </div>
+        <div class="tree-body" id="priority-body"></div>
+      </div>
+
+      <!-- Phase 3: AI Agents panel -->
+      <div id="phase3-trigger" class="next-card" style="margin-top:16px;">
+        <div class="next-text">
+          <strong>Phase 3 — AI Agents</strong><br>
+          Five specialist agents run in parallel, each reviewing a different dimension via OpenRouter (Poolside Laguna M.1, free).
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0;">
+          <input id="api-key-input" type="password" class="url-input"
+            placeholder="sk-or-v1-... (OpenRouter API key)"
+            style="width:240px;font-size:12px;padding:9px 12px;" />
+          <button class="btn" id="agents-btn" onclick="handleAgents()">
+            <span class="btn-spinner"></span>
+            <span class="btn-label">Run agents →</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="phase3-results" style="display:none;margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <p class="section-label" style="margin:0;">AI Review</p>
+          <div style="display:flex;gap:8px;">
+            <button class="btn" id="copy-report-btn" onclick="copyReport()"
+              style="padding:8px 14px;font-size:12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);">
+              Copy Markdown
+            </button>
+            <button class="btn" id="download-report-btn" onclick="downloadReport()"
+              style="padding:8px 14px;font-size:12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);">
+              Download .md
+            </button>
+          </div>
+        </div>
+
+        <!-- Overall score card -->
+        <div class="repo-card" id="overall-card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Overall score</div>
+              <div id="overall-score-display" style="font-size:48px;font-weight:600;font-family:var(--mono);line-height:1;"></div>
+            </div>
+            <div style="flex:1;min-width:200px;">
+              <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">By dimension</div>
+              <div id="score-bars"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Executive summary -->
+        <div class="repo-card" id="exec-summary-card" style="margin-bottom:16px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Executive summary</div>
+          <div id="exec-summary-text" style="font-size:14px;line-height:1.7;color:var(--text);"></div>
+          <div style="margin-top:16px;display:none;" id="priorities-section">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Top priorities</div>
+            <ol id="priorities-list" style="padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--text);"></ol>
+          </div>
+        </div>
+
+        <!-- Agent detail cards -->
+        <div id="agent-detail-cards"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span class="footer-note">GitHub Repo Reviewer · BITS Goa DevSoc 2026–27</span>
+    <span class="phase-badge">Phase 5 complete</span>
+  </footer>
+
+</div>
+
+<script src="js/parser.js"></script>
+<script src="js/preprocessor.js"></script>
+<script src="js/agents.js"></script>
+<script src="js/aggregator.js"></script>
+<script src="js/report.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
